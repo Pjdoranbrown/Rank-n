@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rank'n</title>
+    <style>
+        :root {
+            --bg-color: #2c241b;
+            --board-dark: #3e2723;
+            --board-light: #d7ccc8;
+            --highlight: rgba(255, 215, 0, 0.5);
+            --text-color: #eecfa1;
+            --btn-bg: #d7ccc8;
+            --btn-border: #3e2723;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        /* --- SCREENS & VISIBILITY --- */
+        .screen {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- MENUS --- */
+        #menu-screen, #single-player-menu {
+            text-align: center;
+            padding-top: 20px;
+        }
+
+        .splash-img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 20px #000;
+            margin-bottom: 20px;
+            border: 2px solid #5d4037;
+        }
+
+        .menu-btn {
+            display: block;
+            width: 80%;
+            margin: 15px auto;
+            padding: 15px;
+            font-size: 1.2rem;
+            background: var(--btn-bg);
+            border: 3px solid var(--btn-border);
+            color: #2c241b;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+
+        .menu-btn:active { transform: scale(0.98); }
+        .menu-btn:hover { background: #fff; }
+
+        /* --- RULES SCREEN --- */
+        #rules-screen {
+            padding: 20px;
+            text-align: left;
+            box-sizing: border-box;
+        }
+
+        .rules-content {
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #5d4037;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .rules-content h3 { margin-top: 0; color: #ffd700; }
+        .rules-content p, .rules-content ul { font-size: 0.9rem; line-height: 1.5; }
+        .rules-content ul { padding-left: 20px; }
+
+        /* --- SCORE DISPLAY --- */
+        #sp-score-display {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ffd700;
+            width: 80%;
+        }
+
+        /* --- GAME LAYOUT --- */
+        #game-container {
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 10px 0;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            border: 1px solid #5d4037;
+            position: relative;
+        }
+
+        .exit-btn {
+            position: absolute;
+            top: 0; right: 0;
+            background: #8b0000;
+            color: #fff;
+            border: 1px solid #fff;
+            padding: 5px 10px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+            font-size: 0.8rem;
+            border-radius: 0 0 0 8px;
+        }
+        .exit-btn:hover { background: #ff0000; }
+
+        .player-panel {
+            text-align: center;
+            width: 45%;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        
+        .player-panel.active {
+            opacity: 1;
+            font-weight: bold;
+            text-shadow: 0 0 5px gold;
+        }
+
+        .purse-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 5px;
+            background: rgba(0,0,0,0.3);
+            padding: 5px;
+            border-radius: 20px;
+        }
+
+        .purse-icon { width: 30px; height: 30px; }
+
+        .winnings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: -5px;
+            min-height: 20px;
+        }
+
+        .captured-img {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            border: 1px solid #000;
+            background: #000;
+        }
+
+        #status-bar {
+            text-align: center;
+            font-weight: bold;
+            color: #ffd700;
+            min-height: 1.5em;
+        }
+
+        /* --- BOARD --- */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 95vw;
+            height: 95vw;
+            max-width: 500px;
+            max-height: 500px;
+            border: 8px solid #5d4037;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+            background: #2e1e19;
+            position: relative;
+        }
+
+        .square {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .light { background-color: var(--board-light); }
+        .dark { background-color: var(--board-dark); }
+
+        .highlight::after {
+            content: '';
+            position: absolute;
+            width: 50%; height: 50%;
+            background: var(--highlight);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+            z-index: 5;
+        }
+        .highlight:hover { cursor: pointer; background: rgba(255,215,0,0.2); }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+
+        /* --- PIECES --- */
+        .piece {
+            width: 90%; height: 90%;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .piece.selected {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 5px gold);
+            z-index: 20;
+        }
+
+        .coin-img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 0; left: 0;
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.7));
+        }
+
+        .piece.veteran .coin-img:first-child {
+            width: 85%; height: 85%;
+            top: 0; left: 0;
+        }
+        .piece.veteran .coin-img:last-child {
+            width: 50%; height: 50%;
+            top: 50%; left: 50%;
+            border-radius: 50%;
+            box-shadow: -1px -1px 2px rgba(0,0,0,0.5);
+            z-index: 15;
+        }
+
+        /* --- MODALS --- */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(44, 36, 27, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            text-align: center;
+        }
+
+        .modal-box {
+            background: var(--board-dark);
+            border: 2px solid #d7ccc8;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px #000;
+            max-width: 80%;
+        }
+
+        button.game-btn {
+            background: #d7ccc8;
+            border: 2px solid #3e2723;
+            padding: 10px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 5px;
+            color: #2c241b;
+        }
+        button.game-btn:hover { background: #fff; }
+
+        .choice-btn { width: 100%; margin: 5px 0; }
+        .c-copper { background: #b87333; color: white; }
+        .c-silver { background: #c0c0c0; }
+        .c-gold { background: #ffd700; }
+
+        .legend {
+            text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;
+            line-height: 1.5;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- MAIN MENU -->
+    <div id="menu-screen" class="screen">
+        <img src="Splash_screen.jpg" class="splash-img" alt="Rank'n">
+        <button class="menu-btn" onclick="startTwoPlayerMode()">Two Player</button>
+        <button class="menu-btn" onclick="goToSinglePlayerMenu()">Single Player</button>
+        <button class="menu-btn" onclick="showRules()">Rules</button>
+    </div>
+
+    <!-- RULES SCREEN -->
+    <div id="rules-screen" class="screen hidden">
+        <button class="exit-btn" onclick="confirmExit()">EXIT</button>
+        <h1>RULES OF ENGAGEMENT</h1>
+        <div class="rules-content">
+            <h3>The Triad</h3>
+            <p>Victory is decided by type:</p>
+            <ul>
+                <li><strong>Spear (Copper)</strong> defeats Knight (Gold)</li>
+                <li><strong>Knight (Gold)</strong> defeats Bow (Silver)</li>
+                <li><strong>Bow (Silver)</strong> defeats Spear (Copper)</li>
+            </ul>
+
+            <h3>Movement & Capture</h3>
+            <p>Units move one square <strong>diagonally forward</strong> onto dark squares.</p>
+            <p>To capture, jump diagonally over an enemy into an empty space beyond. Multiple jumps are allowed.</p>
+
+            <h3>The Draft</h3>
+            <p>Each player drafts 4 units for their back row. Choose wisely between Copper, Silver, or Gold to counter your opponent.</p>
+
+            <h3>Veterans</h3>
+            <p>Reach the enemy's back row to promote. Stack a second coin on top. Veterans can move <strong>backward</strong> and strike with the power of both coins.</p>
+
+            <h3>Scoring</h3>
+            <p>The winner is determined by total value captured, minus any losses:</p>
+            <ul>
+                <li>Gold: 100</li>
+                <li>Silver: 10</li>
+                <li>Copper: 1</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SINGLE PLAYER DIFFICULTY MENU -->
+    <div id="single-player-menu" class="screen hidden">
+        <button class="exit-btn" onclick="askExit()">EXIT</button>
+        <img src="single_player.jpg" class="splash-img" alt="Single Player">
+        
+        <div id="sp-score-display">
+            <h3>Your Purse</h3>
+            <div id="sp-score-text">0 gold 0 silver 0 copper</div>
+        </div>
+
+        <h3>Select Difficulty</h3>
+        <button class="menu-btn" onclick="startAiGame('EASY')">Easy</button>
+        <button class="menu-btn" onclick="startAiGame('MEDIUM')">Medium</button>
+        <button class="menu-btn" onclick="startAiGame('HARD')">Hard</button>
+    </div>
+
+    <!-- GAME CONTAINER -->
+    <div id="game-container" class="screen hidden">
+        <button class="exit-btn" onclick="askExit()">EXIT</button>
+        <h1>RANK'N</h1>
+
+        <div class="hud">
+            <div id="p1-panel" class="player-panel">
+                <div id="p1-name">HEADS (You)</div>
+                <div class="purse-row">
+                    <img src="coin_purse.png" class="purse-icon">
+                    <div id="p1-winnings" class="winnings"></div>
+                </div>
+            </div>
+            <div id="p2-panel" class="player-panel">
+                <div id="p2-name">TAILS (AI)</div>
+                <div class="purse-row">
+                    <img src="coin_purse.png" class="purse-icon">
+                    <div id="p2-winnings" class="winnings"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="status-bar">Initializing...</div>
+
+        <div id="board"></div>
+
+        <div class="legend">
+            Triad: Spear > Knight > Bow > Spear<br>
+            Values: Gold(100) Silver(10) Copper(1)
+        </div>
+    </div>
+
+    <!-- --- MODALS --- -->
+
+    <div id="screen-start" class="overlay hidden">
+        <div class="modal-box">
+            <h2>Rank'n</h2>
+            <p>A Game of Coin and Capture</p>
+            <button class="game-btn" onclick="beginMatch()">Flip Coin to Start</button>
+        </div>
+    </div>
+
+    <div id="screen-curtain" class="overlay hidden">
+        <div class="modal-box">
+            <h2 id="curtain-msg">Player 1 Ready?</h2>
+            <p>Pass device to next player.</p>
+            <button class="game-btn" onclick="confirmTurn()">Start Turn</button>
+        </div>
+    </div>
+
+    <div id="screen-choice" class="overlay hidden">
+        <div class="modal-box">
+            <h2 id="choice-title">Draft Unit</h2>
+            <button class="game-btn choice-btn c-copper" onclick="makeChoice('copper')">Copper (Spear)</button>
+            <button class="game-btn choice-btn c-silver" onclick="makeChoice('silver')">Silver (Bow)</button>
+            <button class="game-btn choice-btn c-gold" onclick="makeChoice('gold')">Gold (Knight)</button>
+        </div>
+    </div>
+
+    <div id="screen-exit-confirm" class="overlay hidden">
+        <div class="modal-box">
+            <h2>Return to menu?</h2>
+            <p>Current progress will be lost.</p>
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button class="game-btn" onclick="confirmExit()">Yes</button>
+                <button class="game-btn" onclick="cancelExit()">No</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- GLOBAL PERSISTENT STATE ---
+    let totalScore = 0; // Net value in copper
+
+    // --- GAME CONSTANTS ---
+    const BOARD_SIZE = 8;
+    const P1 = 'heads'; 
+    const P2 = 'tails'; 
+    const TYPES = { COPPER: 'copper', SILVER: 'silver', GOLD: 'gold' };
+    const COIN_VALUES = { 'copper': 1, 'silver': 10, 'gold': 100 };
+    const ASSETS = {
+        'heads': { 'copper': 'heads_copper.png', 'silver': 'heads_silver.png', 'gold': 'heads_gold.png' },
+        'tails': { 'copper': 'tails_copper.png', 'silver': 'tails_silver.png', 'gold': 'tails_gold.png' }
+    };
+
+    // --- MATCH STATE ---
+    let board = [];
+    let turn = P1;
+    let phase = 'INIT'; 
+    let draftCount = { 'heads': 0, 'tails': 0 };
+    let selectedSq = null;
+    let validMoves = [];
+    let pendingActionSq = null; 
+    let winnings = { 'heads': [], 'tails': [] };
+    
+    // Mode Flags
+    let isSinglePlayer = false;
+    let aiDifficulty = 'EASY'; // EASY, MEDIUM, HARD
+    let aiPlayer = null; // Will be set after coin flip (P1 or P2)
+
+    // --- NAVIGATION ---
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+        document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function startTwoPlayerMode() {
+        isSinglePlayer = false;
+        aiPlayer = null;
+        document.getElementById('p1-name').innerText = "HEADS (P1)";
+        document.getElementById('p2-name').innerText = "TAILS (P2)";
+        initGameScreen();
+    }
+
+    function goToSinglePlayerMenu() {
+        updateScoreDisplay();
+        showScreen('single-player-menu');
+    }
+
+    function showRules() {
+        showScreen('rules-screen');
+    }
+
+    function startAiGame(difficulty) {
+        isSinglePlayer = true;
+        aiDifficulty = difficulty;
+        initGameScreen();
+    }
+
+    function initGameScreen() {
+        showScreen('game-container');
+        document.getElementById('screen-start').classList.remove('hidden');
+        board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+        renderBoard();
+    }
+
+    function askExit() { document.getElementById('screen-exit-confirm').classList.remove('hidden'); }
+    function cancelExit() { document.getElementById('screen-exit-confirm').classList.add('hidden'); }
+    function confirmExit() {
+        document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+        showScreen('menu-screen');
+    }
+
+    function updateScoreDisplay() {
+        let val = Math.abs(totalScore);
+        let gold = Math.floor(val / 100);
+        let rem = val % 100;
+        let silver = Math.floor(rem / 10);
+        let copper = rem % 10;
+        
+        let txt = `${gold} gold ${silver} silver ${copper} copper`;
+        let prefix = totalScore >= 0 ? "Winnings: " : "Debt: ";
+        
+        document.getElementById('sp-score-text').innerText = prefix + txt;
+        document.getElementById('sp-score-text').style.color = totalScore >= 0 ? '#4caf50' : '#f44336';
+    }
+
+    // --- GAME LOGIC ---
+
+    function beginMatch() {
+        // Reset State
+        board = Array(8).fill(null).map(() => Array(8).fill(null));
+        winnings = { 'heads': [], 'tails': [] };
+        draftCount = { 'heads': 0, 'tails': 0 };
+        validMoves = [];
+        selectedSq = null;
+        
+        // Setup Ranks
+        for(let c=0; c<8; c++) if((1+c)%2 !== 0) board[1][c] = { owner: P2, types: ['copper'], veteran: false };
+        for(let c=0; c<8; c++) if((6+c)%2 !== 0) board[6][c] = { owner: P1, types: ['copper'], veteran: false };
+
+        // Determine Start
+        turn = Math.random() < 0.5 ? P1 : P2;
+        phase = 'DRAFT';
+        
+        // AI Setup
+        if (isSinglePlayer) {
+            // Player is always P1 (Heads) for simplicity in UI, but turn order varies
+            // Actually, let's keep Player as Heads. If Turn=P2, AI goes first.
+            aiPlayer = P2; 
+            document.getElementById('p1-name').innerText = "HEADS (You)";
+            document.getElementById('p2-name').innerText = `TAILS (AI: ${aiDifficulty})`;
+        }
+
+        document.getElementById('screen-start').classList.add('hidden');
+        updateView();
+
+        if (isSinglePlayer && turn === aiPlayer) {
+            setTimeout(aiTurn, 1000);
+        } else if (!isSinglePlayer) {
+            showCurtain(`${turn.toUpperCase()} DRAFTS FIRST`);
+        }
+    }
+
+    function showCurtain(msg) {
+        if(isSinglePlayer) return; // No curtain in SP
+        document.getElementById('curtain-msg').innerText = msg;
+        document.getElementById('screen-curtain').classList.remove('hidden');
+    }
+
+    function confirmTurn() {
+        document.getElementById('screen-curtain').classList.add('hidden');
+        renderBoard(); 
+    }
+
+    function getOpponent(p) { return p === P1 ? P2 : P1; }
+
+    // --- RULES ENGINE ---
+
+    function canDefeat(atkTypes, defTypes) {
+        for (let a of atkTypes) {
+            for (let d of defTypes) {
+                if (a === 'copper' && d === 'gold') return true;
+                if (a === 'gold' && d === 'silver') return true;
+                if (a === 'silver' && d === 'copper') return true;
+            }
+        }
+        return false;
+    }
+
+    function getMoves(r, c) {
+        let p = board[r][c];
+        let moves = [];
+        let forward = (p.owner === P1) ? -1 : 1;
+        let dirs = [[forward, -1], [forward, 1]];
+        if (p.veteran) dirs.push([-forward, -1], [-forward, 1]);
+
+        dirs.forEach(([dr, dc]) => {
+            let nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                let target = board[nr][nc];
+                if (!target) {
+                    moves.push({ r: nr, c: nc, type: 'move' });
+                } else if (target.owner !== p.owner) {
+                    if (canDefeat(p.types, target.types)) {
+                        let jr = nr + dr, jc = nc + dc;
+                        if (jr >= 0 && jr < 8 && jc >= 0 && jc < 8 && !board[jr][jc]) {
+                            moves.push({ r: jr, c: jc, type: 'capture', killR: nr, killC: nc });
+                        }
+                    }
+                }
+            }
+        });
+        return moves;
+    }
+
+    // --- INTERACTION ---
+
+    function handleSquare(r, c) {
+        if (isSinglePlayer && turn === aiPlayer) return; // Block input during AI turn
+
+        if (phase === 'DRAFT') {
+            let rank = (turn === P1) ? 7 : 0;
+            if (r === rank && !board[r][c] && (r+c)%2 !== 0) {
+                pendingActionSq = {r, c};
+                document.getElementById('choice-title').innerText = "Draft Unit";
+                document.getElementById('screen-choice').classList.remove('hidden');
+            }
+            return;
+        }
+
+        // PLAY PHASE
+        if (board[r][c] && board[r][c].owner === turn) {
+            selectedSq = {r, c};
+            validMoves = getMoves(r, c);
+            renderBoard();
+            return;
+        }
+
+        if (selectedSq) {
+            let move = validMoves.find(m => m.r === r && m.c === c);
+            if (move) {
+                executeMove(move);
+            } else {
+                selectedSq = null;
+                validMoves = [];
+                renderBoard();
+            }
+        }
+    }
+
+    function executeMove(move) {
+        let piece = board[selectedSq.r][selectedSq.c];
+        board[selectedSq.r][selectedSq.c] = null;
+        
+        if (move.type === 'capture') {
+            let victim = board[move.killR][move.killC];
+            board[move.killR][move.killC] = null;
+            victim.types.forEach(t => winnings[turn].push({ type: t, face: victim.owner }));
+        }
+
+        board[move.r][move.c] = piece;
+
+        let promoRank = (turn === P1) ? 0 : 7;
+        // Check for promotion
+        if (move.r === promoRank && !piece.veteran) {
+            phase = 'PROMOTION';
+            pendingActionSq = {r: move.r, c: move.c};
+            selectedSq = null;
+            validMoves = [];
+            renderBoard();
+            
+            if (isSinglePlayer && turn === aiPlayer) {
+                setTimeout(aiPromote, 500); // AI Promotion
+            } else {
+                document.getElementById('choice-title').innerText = "Promote Veteran";
+                document.getElementById('screen-choice').classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (move.type === 'capture') {
+            let followUps = getMoves(move.r, move.c).filter(m => m.type === 'capture');
+            if (followUps.length > 0) {
+                selectedSq = {r: move.r, c: move.c};
+                validMoves = followUps;
+                renderBoard();
+                
+                if (isSinglePlayer && turn === aiPlayer) {
+                    setTimeout(aiTurn, 500); // AI Multi-jump continue
+                }
+                return; 
+            }
+        }
+
+        endTurn();
+    }
+
+    function makeChoice(type) {
+        document.getElementById('screen-choice').classList.add('hidden');
+        processChoice(type);
+    }
+
+    function processChoice(type) {
+        let {r, c} = pendingActionSq;
+        
+        if (phase === 'DRAFT') {
+            board[r][c] = { owner: turn, types: [type], veteran: false };
+            draftCount[turn]++;
+            if (draftCount.heads >= 4 && draftCount.tails >= 4) {
+                phase = 'PLAY';
+            }
+            endTurn();
+        } 
+        else if (phase === 'PROMOTION') {
+            let p = board[r][c];
+            p.types.push(type);
+            p.veteran = true;
+            phase = 'PLAY';
+            endTurn();
+        }
+    }
+
+    function endTurn() {
+        selectedSq = null;
+        validMoves = [];
+        turn = getOpponent(turn);
+        updateView();
+        
+        if (phase === 'PLAY' && handleGameOver()) return;
+
+        if (isSinglePlayer) {
+            if (turn === aiPlayer) setTimeout(aiTurn, 1000);
+        } else {
+            showCurtain(`${turn.toUpperCase()}'S TURN`);
+        }
+    }
+
+    // --- AI LOGIC ---
+
+    function aiTurn() {
+        if (phase === 'DRAFT') aiDraft();
+        else if (phase === 'PLAY') aiMove();
+    }
+
+    function aiDraft() {
+        // Find empty spot
+        let rank = (turn === P1) ? 7 : 0;
+        let emptySpots = [];
+        for(let c=0; c<8; c++) {
+            if ((rank+c)%2 !== 0 && !board[rank][c]) emptySpots.push({r: rank, c: c});
+        }
+        
+        if (emptySpots.length === 0) return; // Should not happen
+        
+        let spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
+        pendingActionSq = spot;
+
+        let type = 'copper';
+        // Difficulty Logic for Drafting
+        if (aiDifficulty === 'EASY') {
+            type = ['copper', 'silver', 'gold'][Math.floor(Math.random() * 3)];
+        } else {
+            // Medium/Hard: Balanced draft
+            // Simple logic: pick what we have least of
+            let counts = { copper: 0, silver: 0, gold: 0 };
+            // Count current units
+            // (Simulated logic for brevity: just random weighted for now)
+            let rand = Math.random();
+            if (rand < 0.33) type = 'gold';
+            else if (rand < 0.66) type = 'silver';
+        }
+        
+        processChoice(type);
+    }
+
+    function aiMove() {
+        // Gather all AI pieces and their moves
+        let allMoves = []; // { r, c, move }
+        
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                if (board[r][c] && board[r][c].owner === aiPlayer) {
+                    // Check if this is a continuation of multi-jump
+                    if (selectedSq) {
+                        if (selectedSq.r !== r || selectedSq.c !== c) continue;
+                    }
+                    
+                    let moves = getMoves(r, c);
+                    moves.forEach(m => {
+                        allMoves.push({ r, c, move: m });
+                    });
+                }
+            }
+        }
+
+        if (allMoves.length === 0) {
+            handleGameOver(); // No moves
+            return;
+        }
+
+        let bestAction = null;
+
+        if (aiDifficulty === 'EASY') {
+            bestAction = allMoves[Math.floor(Math.random() * allMoves.length)];
+        } else {
+            // Medium & Hard prioritize captures
+            let captures = allMoves.filter(a => a.move.type === 'capture');
+            if (captures.length > 0) {
+                // Hard: Pick highest value capture
+                if (aiDifficulty === 'HARD') {
+                    // Placeholder: Random capture for now, logic can be expanded
+                    bestAction = captures[Math.floor(Math.random() * captures.length)];
+                } else {
+                    bestAction = captures[Math.floor(Math.random() * captures.length)];
+                }
+            } else {
+                // Move forward if possible
+                bestAction = allMoves[Math.floor(Math.random() * allMoves.length)];
+            }
+        }
+
+        selectedSq = { r: bestAction.r, c: bestAction.c };
+        executeMove(bestAction.move);
+    }
+
+    function aiPromote() {
+        // AI chooses promotion unit
+        let type = 'gold'; // Default aggressive
+        if (aiDifficulty === 'HARD') {
+            // Counter player logic would go here
+            type = 'silver'; 
+        }
+        processChoice(type);
+    }
+
+    // --- GAME OVER ---
+
+    function handleGameOver() {
+        let p1Cnt = 0, p2Cnt = 0, canMove = false;
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                let p = board[r][c];
+                if(p) {
+                    p.owner === P1 ? p1Cnt++ : p2Cnt++;
+                    if (p.owner === turn && getMoves(r, c).length > 0) canMove = true;
+                }
+            }
+        }
+
+        if (p1Cnt === 0 || p2Cnt === 0 || !canMove) {
+            calculateAndShowResults();
+            return true;
+        }
+        return false;
+    }
+
+    function calculateScore(player) {
+        return winnings[player].reduce((total, coin) => total + COIN_VALUES[coin.type], 0);
+    }
+
+    function calculateAndShowResults() {
+        phase = 'GAMEOVER';
+        let s1 = calculateScore(P1);
+        let s2 = calculateScore(P2);
+        
+        let diff = s1 - s2;
+        let winner = s1 > s2 ? "HEADS" : "TAILS";
+        let loser = s1 > s2 ? "Tails" : "Heads";
+        
+        if (isSinglePlayer) {
+            // Accumulate global score
+            // If P1 (Human) won, add positive diff. If P1 lost, add negative diff.
+            totalScore += diff;
+        }
+
+        // Show Message
+        let absDiff = Math.abs(diff);
+        let gold = Math.floor(absDiff / 100);
+        let silver = Math.floor((absDiff % 100) / 10);
+        let copper = absDiff % 10;
+        
+        let parts = [];
+        if(gold) parts.push(gold + " gold");
+        if(silver) parts.push(silver + " silver");
+        if(copper) parts.push(copper + " copper");
+        let debtStr = parts.join(", ");
+        
+        let msg = "";
+        if (diff === 0) msg = "DRAW!";
+        else msg = `${winner} WINS!\n${loser} pays ${debtStr || 'nothing'}.`;
+        
+        alert(msg);
+        
+        if (isSinglePlayer) goToSinglePlayerMenu();
+        else showScreen('menu-screen');
+    }
+
+    // --- RENDER ---
+
+    function updateView() {
+        document.getElementById('p1-panel').classList.toggle('active', turn === P1);
+        document.getElementById('p2-panel').classList.toggle('active', turn === P2);
+        document.getElementById('status-bar').innerText = phase === 'DRAFT' ? "DRAFTING..." : "PLAYING";
+        
+        // Winnings
+        ['heads', 'tails'].forEach(p => {
+            let div = document.getElementById(p === 'heads' ? 'p1-winnings' : 'p2-winnings');
+            div.innerHTML = '';
+            winnings[p].forEach(c => {
+                let img = document.createElement('img');
+                img.className = 'captured-img';
+                img.src = ASSETS[c.face][c.type];
+                div.appendChild(img);
+            });
+        });
+        
+        renderBoard();
+    }
+
+    function renderBoard() {
+        let el = document.getElementById('board');
+        el.innerHTML = '';
+
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                let sq = document.createElement('div');
+                let isDark = (r+c)%2 !== 0;
+                sq.className = `square ${isDark ? 'dark' : 'light'}`;
+                
+                if (isDark && (!isSinglePlayer || turn === P1)) {
+                    if (validMoves.some(m => m.r === r && m.c === c)) sq.classList.add('highlight');
+                    sq.onclick = () => handleSquare(r, c);
+                }
+
+                let p = board[r][c];
+                if (p) {
+                    let pieceDiv = document.createElement('div');
+                    pieceDiv.className = `piece ${p.veteran ? 'veteran' : ''}`;
+                    if (selectedSq && selectedSq.r === r && selectedSq.c === c) pieceDiv.classList.add('selected');
+
+                    let img1 = document.createElement('img');
+                    img1.className = 'coin-img';
+                    img1.src = ASSETS[p.owner][p.types[0]];
+                    pieceDiv.appendChild(img1);
+
+                    if (p.veteran) {
+                        let img2 = document.createElement('img');
+                        img2.className = 'coin-img';
+                        img2.src = ASSETS[p.owner][p.types[1]];
+                        pieceDiv.appendChild(img2);
+                    }
+                    sq.appendChild(pieceDiv);
+                }
+                el.appendChild(sq);
+            }
+        }
+    }
+
+</script>
+</body>
+</html>
